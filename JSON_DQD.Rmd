@@ -1,0 +1,208 @@
+---
+title: "JSON DQD Report"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: scroll
+    theme: cosmo
+ 
+---
+
+<style>.main-container { max-width: 1200px; margin-left: 0; margin-right: auto; }</style>
+
+
+
+``````{r global-options, include=FALSE}
+# This section suppresses all code and errors so only charts, graphs, and tables are visible. 
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='figures/', echo=FALSE, warning=FALSE, message=FALSE, error=TRUE)
+
+
+
+```
+
+
+```{r setup, include=FALSE}
+#load necessary packages for gauges, computation, reading JSON, etc
+#install.packages("openxlsx")
+
+   if (!require("pacman")) install.packages("pacman")
+   library(pacman)
+   pacman::p_load(tidyverse, flexdashboard, DT, knitr, flextable, openair, skimr,
+                  data.table, rmarkdown, shiny, stringi, htmltools, janitor, 
+                  DataExplorer, inspectdf, officer, 
+                  openxlsx, readxl, writexl, outliers, curl)
+
+# openxlsx package makes it easier to export multiple dataframes in R to Excel workbook with each dataframe in R corresponds to a worksheet in Excel
+
+
+### NOTES FOR REUSABILITY###
+#open code chunk that needs edited in a text editor (textEdit, notepad++, CorEditor, Sublime, etc), press ##needed or replace all
+
+## EXAMPLE: 'total_dqd <- nrow(gedqd)
+ #validity <- dplyr::filter(gedqd, dqd %in% "validity",)
+ #total_validity <- nrow(validity)
+ #percent_validity <- (total_validity / total_dqd) * 100
+ #gauge(percent_validity, min = 1, max = 100, symbol = '%', gaugeSectors(
+ #success = c(1, 100)))'
+
+## CMD+F 'validity' and replace with 'consistencty' or other
+```
+
+
+```{r loadin}
+#manually added dqd value pairs to each test in, and "column" names to first two tests in JSON #file
+
+############# LOCAL CONFIGURATION #################
+#setwd("")
+###################################################
+
+gedqd <- jsonlite::fromJSON("todds.json")   #use correct path for your data >  fromJSON("your.path")
+expectations <- gedqd[["results"]][["expectation_config"]][["expectation_type"]]
+success <- gedqd[["results"]][["success"]]
+dqd <- gedqd[["results"]][["dqd"]]
+
+column <- gedqd[["results"]][["expectation_config"]][["kwargs"]][["column"]]
+df <- data.frame(expectations, success, dqd) 
+
+gedqd <- cbind(column, df) #combines the 2 df's row to row 
+consistency <- gedqd
+#column and test name combined in a column
+gedqd <- gedqd %>% 
+  unite("Unique_Test", column:expectations, remove = FALSE)
+
+#GEQDQ_Output <- write_xlsx(gedqd,"/Users/stephanie/Documents/Documents - Stephanie’s MacBook Pro/GEDQD_Output.xlsx")  #enter your path to save to locally
+
+#GEDQD_csv <- write.csv(gedqd,"/Users/stephanie/Documents/Documents - Stephanie’s MacBook Pro/GEDQD_Output.csv")
+##### CURRENTLY SET TO CHART STACK (SCROLLIING) - ADD TABSETS/PAGES ETC IF DESIRED
+
+```
+
+Data
+===================================== 
+
+
+-------------------------------------
+```{r data-utilities}
+std_border = fp_border(color = "black", width = 1)
+```
+
+
+
+
+### % of Tests Validity DQD
+```{r validity}
+total_dqd <- nrow(gedqd)
+validity <- dplyr::filter(gedqd, dqd %in% "validity",)
+total_validity <- nrow(validity)
+percent_validity <- (total_validity / total_dqd) * 100
+
+gauge(percent_validity, min = 1, max = 100, symbol = '%', gaugeSectors(
+  success = c(1, 100)))
+
+
+
+```
+
+
+### % of Tests Consistency DQD
+```{r consistency_gauge}
+total_dqd <- nrow(gedqd)
+consistency <- dplyr::filter(gedqd, dqd %in% "consistency",)
+total_consistency <- nrow(consistency)
+percent_consistency <- (total_consistency / total_dqd) * 100
+
+gauge(percent_consistency, min = 1, max = 100, symbol = '%', gaugeSectors(
+  success = c(1, 100)))
+
+```
+
+
+### % of Tests Completeness DQD
+```{r completeness_gauge}
+
+total_dqd <- nrow(gedqd)
+completeness <- dplyr::filter(gedqd, dqd %in% "completeness",)
+total_completeness <- nrow(completeness)
+percent_completeness <- (total_completeness / total_dqd) * 100
+
+gauge(percent_completeness, min = 1, max = 100, symbol = '%', gaugeSectors(
+  success = c(1, 100)))
+
+```
+
+### Total Test Failure Rate
+```{r Success_total_tests}
+
+#percent of all tests failed
+total_tests <- nrow(gedqd)
+tests_failed <- dplyr::filter(gedqd, success %in% "FALSE",)
+total_failed <- nrow(tests_failed)
+percent_failed <- (total_failed / total_tests) * 100
+
+gauge(percent_failed, min = 1, max = 100, symbol = '%', gaugeSectors(
+  success = c(1, 100)))
+
+```
+
+
+
+### DQD Completeness Failure Rate
+```{r completeness_success}
+
+
+
+completeness_tests <- dplyr::filter(gedqd, dqd %in% "completeness",)
+comp_total <- nrow(completeness_tests)
+comp_tests_failed <- dplyr::filter(completeness_tests, success %in% "FALSE",)
+comp_total_fail <- nrow(comp_tests_failed)
+percent_comp_fail <- (comp_total_fail / comp_total) * 100
+
+gauge(percent_comp_fail, min = 1, max = 100, symbol = '%', gaugeSectors(
+success = c(1, 100)))
+
+```
+
+
+### DQD Validity Failure Rate
+```{r validity_success}
+
+
+validity_tests <- dplyr::filter(gedqd, dqd %in% "validity",)
+val_total <- nrow(validity_tests)
+val_tests_failed <- dplyr::filter(validity_tests, success %in% "FALSE",)
+val_total_fail <- nrow(val_tests_failed)
+percent_val_fail <- (val_total_fail / val_total) * 100
+
+gauge(percent_val_fail, min = 1, max = 100, symbol = '%', gaugeSectors(
+success = c(1, 100)))
+
+```
+
+
+### DQD Consistency Failure Rate
+```{r consistency _success}
+
+
+consist_tests <- dplyr::filter(gedqd, dqd %in% "consistency",)
+consist_total <- nrow(consist_tests)
+consist_tests_failed <- dplyr::filter(consist_tests, success %in% "FALSE",)
+consist_total_fail <- nrow(consist_tests_failed)
+percent_consist_fail <- (consist_total_fail / consist_total) * 100
+
+gauge(percent_consist_fail, min = 1, max = 100, symbol = '%', gaugeSectors(
+success = c(1, 100)))
+
+```
+
+```{r}
+
+#list_of_datasets <-
+  #list("validity" = validity, "consistency" = consistency)
+## path = tempfile(fileext = ".xlxs"),
+        #("Users/stephaniebeal/downloads/test.xlsx")
+
+
+
+``` 
+
+###
