@@ -1,2 +1,3 @@
 # JSON test-run-local
- testing pushing to github
+inital guages report
+add menus/options
